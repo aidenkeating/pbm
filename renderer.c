@@ -11,7 +11,12 @@
  * @param height The returned height.
  * @return Zero, if successful.
  */
-int read_width_height(char *line, int line_length, int *width, int *height) {
+int read_width_height(
+    const char *line,
+    int line_length,
+    int *width,
+    int *height
+) {
     int ret = 0;
     int tok_idx = 0;
     char *line_copy = malloc(line_length + 1);
@@ -20,7 +25,7 @@ int read_width_height(char *line, int line_length, int *width, int *height) {
         goto final;
     }
     strncpy(line_copy, line, line_length);
-    char *line_tok = strtok(line_copy, " ");
+    const char *line_tok = strtok(line_copy, " ");
     while (line_tok != NULL) {
         switch (tok_idx) {
             case 0:
@@ -42,48 +47,62 @@ int read_width_height(char *line, int line_length, int *width, int *height) {
         return ret;
 }
 
-int main(int argc, char *argv[]) {
+int main(const int argc, char *argv[]) {
+    int ret = 0;
     if (argc != 2) {
         printf("usage: renderer [filename]\n");
-        exit(1);
+        ret = 1;
+        goto final;
     }
     FILE *f = fopen(argv[1], "r");
     if (!f) {
         printf("error opening file\n");
+        ret = 1;
         goto final;
     }
     char line[256];
     if (!fgets(line, sizeof(line), f)) {
         printf("error reading header: no magic number found\n");
+        ret = 1;
         goto close_file;
     }
     if (strncmp(line, "P1", 2) != 0) {
         printf("error reading header: expected 'P4' header\n");
+        ret = 1;
         goto close_file;
     }
     if (!fgets(line, sizeof(line), f)) {
         printf("error reading header: no content after magic number\n");
+        ret = 1;
         goto close_file;
     }
     int width, height;
     if (read_width_height(line, sizeof(line), &width, &height) != 0) {
         printf("error reading header: no width height\n");
+        ret = 1;
         goto close_file;
     }
     int c;
     while ((c = fgetc(f)) != EOF) {
-        if (c == '\n') {
-            printf("\n");
-        }
-        if (c == '0') {
-            printf(" ");
-        }
-        if (c == '1') {
-            printf("X");
+        switch (c) {
+            case '\n':
+                printf("\n");
+                break;
+            case '0':
+                printf(" ");
+                break;
+            case '1':
+                printf("X");
+                break;
+            case ' ':
+                break;
+            default:
+                ret = 1;
+                goto close_file;
         }
     }
 close_file:
     fclose(f);
 final:
-    exit(0);
+    exit(ret);
 }
