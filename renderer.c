@@ -2,9 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#define P1_LINE_BUF_SIZE 256
+
 /**
- * read_width_height reads the PBM width and height parameter from a given
- * line.
+ * Reads the PBM width and height parameter from a given line.
  * @param line The line to read.
  * @param line_length The length of the line.
  * @param width The returned width.
@@ -47,6 +48,24 @@ int read_width_height(
         return ret;
 }
 
+/**
+ * Returns the format version of a file, using the given line as the version
+ * line.
+ * @param line The line to read.
+ * @param line_length The length of the line buffer.
+ * @return The format version, if successful. Else, zero.
+ */
+int read_format(const char *line, const int line_length) {
+    const size_t content_length = strnlen(line, line_length);
+    if (content_length != 3) {
+        return 0;
+    }
+    if (line[0] != 'P' || line[2] != '\n') {
+        return 0;
+    }
+    return line[1] - '0';
+}
+
 int main(const int argc, char *argv[]) {
     int ret = 0;
     if (argc != 2) {
@@ -60,24 +79,30 @@ int main(const int argc, char *argv[]) {
         ret = 1;
         goto final;
     }
-    char line[256];
+    char line[P1_LINE_BUF_SIZE];
     if (!fgets(line, sizeof(line), f)) {
         printf("error reading header: no magic number found\n");
         ret = 1;
         goto close_file;
     }
-    if (strncmp(line, "P1", 2) != 0) {
-        printf("error reading header: expected 'P4' header\n");
+    const int format_version = read_format(line,P1_LINE_BUF_SIZE);
+    if (format_version < 1) {
+        printf("error reading header: invalid format\n");
         ret = 1;
         goto close_file;
     }
-    if (!fgets(line, sizeof(line), f)) {
+    if (format_version != 1) {
+        printf("error reading header: only P1 is currently supported\n");
+        ret = 1;
+        goto close_file;
+    }
+    if (!fgets(line, P1_LINE_BUF_SIZE, f)) {
         printf("error reading header: no content after magic number\n");
         ret = 1;
         goto close_file;
     }
     int width, height;
-    if (read_width_height(line, sizeof(line), &width, &height) != 0) {
+    if (read_width_height(line, P1_LINE_BUF_SIZE, &width, &height) != 0) {
         printf("error reading header: no width height\n");
         ret = 1;
         goto close_file;
