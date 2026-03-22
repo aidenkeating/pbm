@@ -11,5 +11,5 @@ make
 ## Run
 
 ```shell
-renderer files/test.pbm.pbm
+renderer files/test.pbm
 ```
